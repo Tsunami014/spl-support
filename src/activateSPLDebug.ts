@@ -15,7 +15,7 @@ import { FileAccessor } from './splRuntime';
 export function activateSPLDebug(context: vscode.ExtensionContext, factory?: vscode.DebugAdapterDescriptorFactory) {
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand('extension.spl-support.runEditorContents', (resource: vscode.Uri) => {
+		vscode.commands.registerCommand('extension.spl-debug.runEditorContents', (resource: vscode.Uri) => {
 			let targetResource = resource;
 			if (!targetResource && vscode.window.activeTextEditor) {
 				targetResource = vscode.window.activeTextEditor.document.uri;
@@ -23,15 +23,15 @@ export function activateSPLDebug(context: vscode.ExtensionContext, factory?: vsc
 			if (targetResource) {
 				vscode.debug.startDebugging(undefined, {
 					type: 'spl',
-					name: 'Debug Shakespeare File',
-					request: 'debug',
+					name: 'Run File',
+					request: 'launch',
 					program: targetResource.fsPath
 				},
 					{ noDebug: true }
 				);
 			}
 		}),
-		vscode.commands.registerCommand('extension.spl-support.debugEditorContents', (resource: vscode.Uri) => {
+		vscode.commands.registerCommand('extension.spl-debug.debugEditorContents', (resource: vscode.Uri) => {
 			let targetResource = resource;
 			if (!targetResource && vscode.window.activeTextEditor) {
 				targetResource = vscode.window.activeTextEditor.document.uri;
@@ -39,17 +39,17 @@ export function activateSPLDebug(context: vscode.ExtensionContext, factory?: vsc
 			if (targetResource) {
 				vscode.debug.startDebugging(undefined, {
 					type: 'spl',
-					name: 'Debug Shakespeare File',
-					request: 'debug',
-					program: targetResource.fsPath,
+					name: 'Debug File',
+					request: 'launch',
+					program: targetResource.fsPath
 				});
 			}
 		})
 	);
 
-	context.subscriptions.push(vscode.commands.registerCommand('extension.spl-support.getProgramName', config => {
+	context.subscriptions.push(vscode.commands.registerCommand('extension.spl-debug.getProgramName', config => {
 		return vscode.window.showInputBox({
-			placeHolder: "Please enter the name of a markdown file in the workspace folder",
+			placeHolder: "Please enter the name of a spl file in the workspace folder",
 			value: "readme.md"
 		});
 	}));
@@ -63,14 +63,20 @@ export function activateSPLDebug(context: vscode.ExtensionContext, factory?: vsc
 		provideDebugConfigurations(folder: WorkspaceFolder | undefined): ProviderResult<DebugConfiguration[]> {
 			return [
 				{
-					name: "Debug Shakespeare file",
-					request: "debug",
+					name: "Dynamic Launch",
+					request: "launch",
 					type: "spl",
 					program: "${file}"
 				},
 				{
-					name: "Run Shakespeare file",
-					request: "run",
+					name: "Another Dynamic Launch",
+					request: "launch",
+					type: "spl",
+					program: "${file}"
+				},
+				{
+					name: "SPL Launch",
+					request: "launch",
 					type: "spl",
 					program: "${file}"
 				}
@@ -82,13 +88,13 @@ export function activateSPLDebug(context: vscode.ExtensionContext, factory?: vsc
 		factory = new InlineDebugAdapterFactory();
 	}
 	context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('spl', factory));
-	if ('dispose' in factory) {
+    if ('dispose' in factory) {
 		context.subscriptions.push(factory);
 	}
 
 	// override VS Code's default implementation of the debug hover
 	// here we match only SPL "variables", that are words starting with an '$'
-	context.subscriptions.push(vscode.languages.registerEvaluatableExpressionProvider('markdown', {
+	context.subscriptions.push(vscode.languages.registerEvaluatableExpressionProvider('spl', {
 		provideEvaluatableExpression(document: vscode.TextDocument, position: vscode.Position): vscode.ProviderResult<vscode.EvaluatableExpression> {
 
 			const VARIABLE_REGEXP = /\$[a-z][a-z0-9]*/ig;
@@ -107,7 +113,7 @@ export function activateSPLDebug(context: vscode.ExtensionContext, factory?: vsc
 	}));
 
 	// override VS Code's default implementation of the "inline values" feature"
-	context.subscriptions.push(vscode.languages.registerInlineValuesProvider('markdown', {
+	context.subscriptions.push(vscode.languages.registerInlineValuesProvider('spl', {
 
 		provideInlineValues(document: vscode.TextDocument, viewport: vscode.Range, context: vscode.InlineValueContext) : vscode.ProviderResult<vscode.InlineValue[]> {
 
@@ -146,15 +152,15 @@ class SPLConfigurationProvider implements vscode.DebugConfigurationProvider {
 	 * e.g. add all missing attributes to the debug configuration.
 	 */
 	resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: DebugConfiguration, token?: CancellationToken): ProviderResult<DebugConfiguration> {
-
 		// if launch.json is missing or empty
 		if (!config.type && !config.request && !config.name) {
 			const editor = vscode.window.activeTextEditor;
-			if (editor && editor.document.languageId === 'markdown') {
+			if (editor && editor.document.languageId === 'spl') {
 				config.type = 'spl';
-				config.name = 'Run Shakespeare file';
-				config.request = 'run';
+				config.name = 'Launch';
+				config.request = 'launch';
 				config.program = '${file}';
+				config.stopOnEntry = true;
 			}
 		}
 

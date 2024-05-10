@@ -786,15 +786,11 @@ export class SPLDebugSession extends LoggingDebugSession {
 	}
 
 	protected customRequest(command: string, response: DebugProtocol.Response, args: any) {
-		if (command === 'toggleFormatting') {
-			this._valuesInHex = ! this._valuesInHex;
-			if (this._useInvalidatedEvent) {
-				this.sendEvent(new InvalidatedEvent( ['variables'] ));
-			}
-			this.sendResponse(response);
-		} else {
-			super.customRequest(command, response, args);
-		}
+        this._valuesInHex = ! this._valuesInHex;
+        if (this._useInvalidatedEvent) {
+            this.sendEvent(new InvalidatedEvent( ['variables'] ));
+        }
+        this.sendResponse(response);
 	}
 
 	//---- helpers

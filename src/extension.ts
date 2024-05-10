@@ -37,7 +37,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(disposable);
 
 	// debug adapters can be run in different ways by using a vscode.DebugAdapterDescriptorFactory:
-	switch (runMode) {
+    switch (runMode) {
 		case 'server':
 			// run the debug adapter as a server inside the extension and communicate via a socket
 			activateSPLDebug(context, new SPLDebugAdapterServerDescriptorFactory());
@@ -74,7 +74,7 @@ class DebugAdapterExecutableFactory implements vscode.DebugAdapterDescriptorFact
 		// param "executable" contains the executable optionally specified in the package.json (if any)
 
 		// use the executable specified in the package.json if it exists or determine it based on some other information (e.g. the session)
-		if (!executable) {
+        if (!executable) {
 			const command = "absolute path to my DA executable";
 			const args = [
 				"some args",

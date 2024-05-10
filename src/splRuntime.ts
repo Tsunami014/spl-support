@@ -91,7 +91,7 @@ export function timeout(ms: number) {
 /**
  * A SPL runtime with minimal debugger functionality.
  * SPLRuntime is a hypothetical (aka "SPL") "execution engine with debugging support":
- * it takes a Markdown (*.md) file and "executes" it by "running" through the text lines
+ * it takes a spl (*.md) file and "executes" it by "running" through the text lines
  * and searching for "command" patterns that trigger some debugger related functionality (e.g. exceptions).
  * When it finds a command it typically emits an event.
  * The runtime can not only run through the whole file but also executes one line at a time
@@ -531,7 +531,7 @@ export class SPLRuntime extends EventEmitter {
 	}
 
 	/**
-	 * "execute a line" of the readme markdown.
+	 * "execute a line" of the readme spl.
 	 * Returns true if execution sent out a stopped event and needs to stop.
 	 */
 	private executeLine(ln: number, reverse: boolean): boolean {

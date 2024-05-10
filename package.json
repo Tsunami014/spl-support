@@ -11,8 +11,7 @@
   ],
   "activationEvents": [
     "onDebugResolve:spl",
-    "onDebugDynamicConfigurations:spl",
-    "onCommand:extension.spl-support.getProgramName"
+    "onDebugDynamicConfigurations:spl"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -22,14 +21,14 @@
           "title": "Hello World"
         },
         {
-          "command": "extension.spl-support.runEditorContents",
+          "command": "extension.spl-debug.runEditorContents",
           "title": "Run File",
           "category": "SPL Debug",
           "enablement": "!inDebugMode",
           "icon": "$(play)"
         },
         {
-            "command": "extension.spl-support.debugEditorContents",
+            "command": "extension.spl-debug.debugEditorContents",
             "title": "Debug File",
             "category": "SPL Debug",
             "enablement": "!inDebugMode",
@@ -39,23 +38,23 @@
       "menus": {
         "editor/title/run": [
           {
-            "command": "extension.spl-support.runEditorContents",
+            "command": "extension.spl-debug.runEditorContents",
             "when": "resourceLangId == spl",
             "group": "navigation@1"
           },
           {
-            "command": "extension.spl-support.debugEditorContents",
+            "command": "extension.spl-debug.debugEditorContents",
             "when": "resourceLangId == spl",
             "group": "navigation@2"
           }
         ],
         "commandPalette": [
           {
-            "command": "extension.spl-support.debugEditorContents",
+            "command": "extension.spl-debug.debugEditorContents",
             "when": "resourceLangId == spl"
           },
           {
-            "command": "extension.spl-support.runEditorContents",
+            "command": "extension.spl-debug.runEditorContents",
             "when": "resourceLangId == spl"
           }
         ]
@@ -73,7 +72,7 @@
       ],
       "debuggers": [
         {
-          "type": "SPL",
+          "type": "spl",
           "languages": [
             "spl"
           ],
