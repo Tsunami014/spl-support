@@ -7,10 +7,7 @@
 		},
 		{
 			"include": "#strings"
-		},
-        {
-            "include": "#starts"
-        }
+		}
 	],
 	"repository": {
 		"keywords": {
@@ -35,12 +32,7 @@
 					"match": "\\.|,"
 				}
 			]
-		},
-        "starts": {
-            "name": "constant.character.escape.spl",
-            "begin": "(?<!\n)^.+?(?=\n)",
-            "end": "\\."
-        }
+		}
 	},
 	"scopeName": "source.shakespeare"
 }
