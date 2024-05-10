@@ -7,14 +7,23 @@
 		},
 		{
 			"include": "#strings"
-		}
+		},
+        {
+            "include": "#starts"
+        }
 	],
 	"repository": {
 		"keywords": {
-			"patterns": [{
-				"name": "keyword.control.spl",
-				"match": "\\b(if|while|for|return)\\b"
-			}]
+			"patterns": [
+                {
+				    "name": "keyword.control",
+				    "match": "\\b([eE]nter|[eE]xit|[eE]xeunt)\\b"
+			    },
+                {
+                    "name": "header",
+                    "match": "([aA]ct|[sS]cene [IVXCD]+?:)"
+                }
+            ]
 		},
 		"strings": {
 			"name": "string.quoted.double.spl",
@@ -23,10 +32,15 @@
 			"patterns": [
 				{
 					"name": "constant.character.escape.spl",
-					"match": "\\\\."
+					"match": "\\.|,"
 				}
 			]
-		}
+		},
+        "starts": {
+            "name": "constant.character.escape.spl",
+            "begin": "(?<!\n)^.+?(?=\n)",
+            "end": "\\."
+        }
 	},
 	"scopeName": "source.shakespeare"
 }
