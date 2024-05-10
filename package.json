@@ -9,27 +9,143 @@
   "categories": [
     "Programming Languages"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onDebugResolve:spl",
+    "onDebugDynamicConfigurations:spl",
+    "onCommand:extension.spl-support.getProgramName"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
         {
           "command": "helloworld.helloWorld",
           "title": "Hello World"
+        },
+        {
+          "command": "extension.spl-support.runEditorContents",
+          "title": "Run File",
+          "category": "SPL Debug",
+          "enablement": "!inDebugMode",
+          "icon": "$(play)"
+        },
+        {
+            "command": "extension.spl-support.debugEditorContents",
+            "title": "Debug File",
+            "category": "SPL Debug",
+            "enablement": "!inDebugMode",
+            "icon": "$(debug-alt)"
         }
       ],
-    "languages": [{
-      "id": "spl",
-      "aliases": ["SPL", "spl"],
-      "extensions": [".spl"],
-      "configuration": "./language-configuration.json"
-    }],
+      "menus": {
+        "editor/title/run": [
+          {
+            "command": "extension.spl-support.runEditorContents",
+            "when": "resourceLangId == spl",
+            "group": "navigation@1"
+          },
+          {
+            "command": "extension.spl-support.debugEditorContents",
+            "when": "resourceLangId == spl",
+            "group": "navigation@2"
+          }
+        ],
+        "commandPalette": [
+          {
+            "command": "extension.spl-support.debugEditorContents",
+            "when": "resourceLangId == spl"
+          },
+          {
+            "command": "extension.spl-support.runEditorContents",
+            "when": "resourceLangId == spl"
+          }
+        ]
+      },
+      "languages": [{
+        "id": "spl",
+        "aliases": ["SPL", "spl", "Shakespeare", "Shakespearian"],
+        "extensions": [".spl"],
+        "configuration": "./language-configuration.json"
+      }],
+      "breakpoints": [
+        {
+          "language": "spl"
+        }
+      ],
+      "debuggers": [
+        {
+          "type": "SPL",
+          "languages": [
+            "spl"
+          ],
+          "label": "Debug Shakespearian",
+          "program": "./out/debugAdapter.js",
+          "runtime": "node",
+          "configurationAttributes": {
+            "run": {
+              "required": [
+                "program"
+              ],
+              "properties": {
+                "program": {
+                  "type": "string",
+                  "description": "Absolute path to a Shakespeare file.",
+                  "default": "${file}"
+                }
+              }
+            },
+            "debug": {
+              "required": [
+                "program"
+              ],
+              "properties": {
+                "program": {
+                  "type": "string",
+                  "description": "Absolute path to a Shakespeare file.",
+                  "default": "${file}"
+                }
+              }
+            }
+          },
+          "initialConfigurations": [
+            {
+              "type": "SPL",
+              "request": "run",
+              "name": "Run Shakespeare file",
+              "program": "${file}"
+            }
+          ],
+          "configurationSnippets": [
+            {
+              "label": "Shakespeare: Run",
+              "description": "Run a Shakespeare file",
+              "body": {
+                "type": "SPL",
+                "request": "run",
+                "name": "Shakespeare: Run",
+                "program": "${file}"
+              }
+            },
+            {
+                "label": "Shakespeare: Debug",
+                "description": "Debug a Shakespeare file",
+                "body": {
+                  "type": "SPL",
+                  "request": "debug",
+                  "name": "Shakespeare: Debug",
+                  "program": "${file}"
+                }
+              }
+          ],
+          "variables": {
+            "AskForProgramName": "extension.spl-support.getProgramName"
+        }}],
     "grammars": [{
       "language": "spl",
       "scopeName": "source.shakespeare",
       "path": "./syntaxes/spl.tmLanguage.json"
     }]
   },
+  "browser": "./out/web-extension.js",
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
@@ -47,6 +163,19 @@
     "eslint": "^8.57.0",
     "typescript": "^5.4.5",
     "@vscode/test-cli": "^0.0.9",
-    "@vscode/test-electron": "^2.3.9"
+    "@vscode/test-electron": "^2.3.9",
+    "@types/glob": "^7.2.0",
+    "@vscode/debugadapter": "^1.56.0",
+    "@vscode/debugadapter-testsupport": "^1.56.0",
+    "await-notify": "^1.0.1",
+    "base64-js": "^1.5.1",
+    "esbuild": "^0.14.29",
+    "events": "^3.3.0",
+    "glob": "^7.2.0",
+    "mocha": "^9.2.2",
+    "path-browserify": "^1.0.1",
+    "rimraf": "^3.0.2",
+    "url": "^0.11.0",
+    "vsce": "^2.15.0"
   }
 }
