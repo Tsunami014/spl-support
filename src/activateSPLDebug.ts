@@ -202,6 +202,6 @@ function pathToUri(path: string) {
 class InlineDebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory {
 
 	createDebugAdapterDescriptor(_session: vscode.DebugSession): ProviderResult<vscode.DebugAdapterDescriptor> {
-		return new vscode.DebugAdapterInlineImplementation(new SPLDebugSession(workspaceFileAccessor));
+        return new vscode.DebugAdapterInlineImplementation(new SPLDebugSession(workspaceFileAccessor));
 	}
 }
