@@ -25,6 +25,7 @@ export function activateSPLDebug(context: vscode.ExtensionContext, factory?: vsc
 					type: 'spl',
 					name: 'Run File',
 					request: 'launch',
+                    debug: false,
 					program: targetResource.fsPath
 				},
 					{ noDebug: true }
@@ -41,6 +42,7 @@ export function activateSPLDebug(context: vscode.ExtensionContext, factory?: vsc
 					type: 'spl',
 					name: 'Debug File',
 					request: 'launch',
+                    debug: true,
 					program: targetResource.fsPath
 				});
 			}
@@ -160,7 +162,7 @@ class SPLConfigurationProvider implements vscode.DebugConfigurationProvider {
 				config.name = 'Launch';
 				config.request = 'launch';
 				config.program = '${file}';
-				config.stopOnEntry = true;
+				config.debug = false;
 			}
 		}
 

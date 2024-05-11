@@ -89,7 +89,7 @@
         "program": "./out/debugAdapter.js",
         "runtime": "node",
         "configurationAttributes": {
-          "run": {
+          "launch": {
             "required": [
               "program"
             ],
@@ -98,18 +98,11 @@
                 "type": "string",
                 "description": "Absolute path to a Shakespeare file.",
                 "default": "${file}"
-              }
-            }
-          },
-          "debug": {
-            "required": [
-              "program"
-            ],
-            "properties": {
-              "program": {
-                "type": "string",
-                "description": "Absolute path to a Shakespeare file.",
-                "default": "${file}"
+              },
+              "debug": {
+                "type": "boolean",
+                "description": "Whether to debug the script or just run it.",
+                "default": false
               }
             }
           }
@@ -128,9 +121,9 @@
             "description": "Run a Shakespeare file",
             "body": {
               "type": "SPL",
-              "request": "run",
+              "request": "launch",
               "name": "Shakespeare: Run",
-              "program": "${file}"
+              "program": "\\${file}"
             }
           },
           {
@@ -138,15 +131,13 @@
             "description": "Debug a Shakespeare file",
             "body": {
               "type": "SPL",
-              "request": "debug",
+              "request": "launch",
               "name": "Shakespeare: Debug",
-              "program": "${file}"
+              "debug": true,
+              "program": "\\${file}"
             }
           }
-        ],
-        "variables": {
-          "AskForProgramName": "extension.spl-support.getProgramName"
-        }
+        ]
       }
     ],
     "grammars": [
