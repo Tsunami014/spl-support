@@ -165,6 +165,8 @@ export class SPLRuntime extends EventEmitter {
 		await this.loadSource(this.normalizePathAndCasing(program));
 
         this.info.set('init', new RuntimeVariable('init', false))
+        this.info.set('act', new RuntimeVariable('act', -1))
+        this.info.set('scene', new RuntimeVariable('act', -1))
 
 		if (debug) {
 			await this.verifyBreakpoints(this._sourceFile);
@@ -541,6 +543,7 @@ export class SPLRuntime extends EventEmitter {
 	 * Returns true if execution sent out a stopped event and needs to stop.
 	 */
 	private executeLine(ln: number, reverse: boolean): boolean {
+        // TODO: Make this just call an execute_line_part thing that does all this but when it reaches a full stop or whatever it needs to reach then it calls execute_line_part again with the 'new' line
 
 		// first "execute" the instructions associated with this line and potentially hit instruction breakpoints
 		while (reverse ? this.instruction >= this.starts[ln] : this.instruction < this.ends[ln]) {
@@ -551,16 +554,33 @@ export class SPLRuntime extends EventEmitter {
 			}
 		}
 
-		const line = this.getLine(ln);
+		var line = this.getLine(ln);
+        var charOffset = 0;
 
         if (!this.info.get('init')?.value) {
             if (line.includes(".")) {
                 this.info.set('init', new RuntimeVariable('init', true));
-                this.sendEvent('output', 'log', 'Found dot on line ' + ln.toString() + "!!!", this._sourceFile, ln, 0);
+                charOffset = line.indexOf('.') + 1;
+                line = line.slice(charOffset);
+                if (line.trimStart().length != 0) {
+                    this.sendEvent('output', 'warning', 'Multiple statements on one line', this._sourceFile, ln, charOffset + (line.length - line.trimStart().length));
+                }
             } else {
-                this.sendEvent('output', 'log', 'Not init yet... line num ' + ln.toString(), this._sourceFile, ln, 0);
                 return false;
             }
+        }
+
+        if (line.trimStart().toLowerCase().startsWith('act')) {
+            this.info.set('act', new RuntimeVariable('act', 1));
+        }
+
+        if (this.info.get('act')?.value == -1) {
+            if (line.trimStart().length == 0) {
+                return false;
+            }
+            //TODO: find out whether you can have multiple commas in the description of the characters
+            var character = line.slice(0, line.indexOf(','));
+            this.sendEvent('output', 'log', 'character ' + character + ' found', this._sourceFile, ln, charOffset + (line.length - line.trimStart().length));
         }
 
 		// find variable accesses
