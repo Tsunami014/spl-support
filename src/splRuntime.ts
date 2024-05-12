@@ -3,6 +3,7 @@
  *--------------------------------------------------------*/
 
 import { EventEmitter } from 'events';
+import { ShakespearianDat } from './splDAT'
 
 export interface FileAccessor {
 	isWindows: boolean;
@@ -131,7 +132,10 @@ export class SPLRuntime extends EventEmitter {
 	private currentColumn: number | undefined;
 
 	// This is the next instruction that will be 'executed'
-	public instruction= 0;
+	public instruction = 0;
+
+    // This is the info about what's going on with the program.
+    private info = new Map<string, RuntimeVariable>();
 
 	// maps from sourceFile to array of IRuntimeBreakpoint
 	private breakPoints = new Map<string, IRuntimeBreakpoint[]>();
@@ -150,7 +154,7 @@ export class SPLRuntime extends EventEmitter {
 
 
 	constructor(private fileAccessor: FileAccessor) {
-		super();
+		super();     
 	}
 
 	/**
@@ -159,6 +163,8 @@ export class SPLRuntime extends EventEmitter {
 	public async start(program: string, debug: boolean): Promise<void> {
 
 		await this.loadSource(this.normalizePathAndCasing(program));
+
+        this.info.set('init', new RuntimeVariable('init', false))
 
 		if (debug) {
 			await this.verifyBreakpoints(this._sourceFile);
@@ -546,6 +552,16 @@ export class SPLRuntime extends EventEmitter {
 		}
 
 		const line = this.getLine(ln);
+
+        if (!this.info.get('init')?.value) {
+            if (line.includes(".")) {
+                this.info.set('init', new RuntimeVariable('init', true));
+                this.sendEvent('output', 'log', 'Found dot on line ' + ln.toString() + "!!!", this._sourceFile, ln, 0);
+            } else {
+                this.sendEvent('output', 'log', 'Not init yet... line num ' + ln.toString(), this._sourceFile, ln, 0);
+                return false;
+            }
+        }
 
 		// find variable accesses
 		let reg0 = /\$([a-z][a-z0-9]*)(=(false|true|[0-9]+(\.[0-9]+)?|\".*\"|\{.*\}))?/ig;
