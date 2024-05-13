@@ -591,7 +591,7 @@ export class SPLRuntime extends EventEmitter {
     }
     private executeLinePart(ln: number, line: string, charOffset: number): number | boolean {
         const tl = line.trim()
-        const tldiff = (line.length - line.trimStart().length)
+        const tldiff = charOffset + (line.length - line.trimStart().length)
 
         if (line.trimStart().length == 0) {
             return false;
@@ -609,13 +609,13 @@ export class SPLRuntime extends EventEmitter {
         if (line.trimStart().toLowerCase().startsWith('act ')) {
             var act = tl.slice(4, tl.indexOf(',')).trimStart();
             if (act.indexOf(':') == -1) {
-                this.error("Expecting ':'", ln, charOffset + tldiff);
+                this.error("Expecting ':'", ln,  tldiff);
                 return true;
             }
             act = act.slice(0, act.indexOf(':')).trimEnd();
             var actNum = romanToInt(act);
             if (Number.isNaN(actNum)) {
-                this.error('Act number not a roman numeral!', ln, charOffset + tldiff + 4);
+                this.error('Act number not a roman numeral!', ln,  tldiff + 4);
                 return true;
             }
             this.info.set('act', new RuntimeVariable('act', actNum));
@@ -626,23 +626,31 @@ export class SPLRuntime extends EventEmitter {
         if (line.trimStart().toLowerCase().startsWith('scene ')) {
             var scene = tl.slice(6, tl.indexOf(',')).trimStart();
             if (scene.indexOf(':') == -1) {
-                this.error("Expecting ':'", ln, charOffset + tldiff);
+                this.error("Expecting ':'", ln,  tldiff);
                 return true;
             }
             scene = scene.slice(0, scene.indexOf(':')).trimEnd();
             var sceneNum = romanToInt(scene);
             if (Number.isNaN(sceneNum)) {
-                this.error('Scene number not a roman numeral!', ln, charOffset + tldiff + 6);
+                this.error('Scene number not a roman numeral!', ln,  tldiff + 6);
                 return true;
             }
             this.info.set('scene', new RuntimeVariable('scene', sceneNum));
-            this.sendEvent('output', 'log', 'Act ' + this.info.get('act')?.value + ', Scene ' + this.info.get('scene')?.value, this._sourceFile, ln, charOffset + tldiff);
+            this.sendEvent('output', 'log', 'Act ' + this.info.get('act')?.value + ', Scene ' + this.info.get('scene')?.value, this._sourceFile, ln,  tldiff);
             return line.indexOf('.') + 1;
         }
 
         if (this.info.get('act')?.value == -1) {
-            var character = line.slice(0, line.indexOf(',')).trimStart();
-            this.sendEvent('output', 'log', 'character ' + character + ' found', this._sourceFile, ln, charOffset + (line.length - line.trimStart().length));
+            if (tl.indexOf(',') == -1) {
+                this.error("Expecting ','", ln, tldiff);
+                return true;
+            }
+            var character = tl.slice(0, tl.indexOf(','));
+            if (!ShakespearianDat.Characters.includes(character)) {
+                this.error('Character name not valid!', ln, tldiff)
+            }
+            this.variables.set(character, new RuntimeVariable(character + ' info', [new RuntimeVariable('init', 'null')]))
+            // this.sendEvent('output', 'log', 'character ' + character + ' found', this._sourceFile, ln,  tldiff);
             return line.indexOf('.') + 1;
         }
 
