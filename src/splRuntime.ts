@@ -89,6 +89,19 @@ export function timeout(ms: number) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function romanToInt(s: string): number {
+    const romanValues: { [key: string]: number } = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 }; 
+    let result: number = 0;
+    for (let i: number = 0; i < s.length; i++) {
+        if (romanValues[s[i]] < romanValues[s[i + 1]]) {
+            result -= romanValues[s[i]]; 
+        } else {
+            result += romanValues[s[i]];
+        }
+    }
+    return result;
+}
+
 /**
  * A SPL runtime with minimal debugger functionality.
  * SPLRuntime is a hypothetical (aka "SPL") "execution engine with debugging support":
@@ -134,7 +147,10 @@ export class SPLRuntime extends EventEmitter {
 	// This is the next instruction that will be 'executed'
 	public instruction = 0;
 
-    // This is the info about what's going on with the program.
+    // When you hit a breakpoint, then this causes the program to end when you try to continue.
+    private errored = new RuntimeVariable('errored', false);
+
+    // This is the info about what's going on with the program, for the stack trace.
     private info = new Map<string, RuntimeVariable>();
 
 	// maps from sourceFile to array of IRuntimeBreakpoint
@@ -167,6 +183,7 @@ export class SPLRuntime extends EventEmitter {
         this.info.set('init', new RuntimeVariable('init', false))
         this.info.set('act', new RuntimeVariable('act', -1))
         this.info.set('scene', new RuntimeVariable('act', -1))
+        this.errored = new RuntimeVariable('errored', false);
 
 		if (debug) {
 			await this.verifyBreakpoints(this._sourceFile);
@@ -457,7 +474,7 @@ export class SPLRuntime extends EventEmitter {
 	// private methods
 
 	private getLine(line?: number): string {
-		return this.sourceLines[line === undefined ? this.currentLine : line].trim();
+		return this.sourceLines[line === undefined ? this.currentLine : line];
 	}
 
 	private getWords(l: number, line: string): Word[] {
@@ -543,8 +560,10 @@ export class SPLRuntime extends EventEmitter {
 	 * Returns true if execution sent out a stopped event and needs to stop.
 	 */
 	private executeLine(ln: number, reverse: boolean): boolean {
-        // TODO: Make this just call an execute_line_part thing that does all this but when it reaches a full stop or whatever it needs to reach then it calls execute_line_part again with the 'new' line
-
+        if (this.errored.value) {
+            this.sendEvent('end');
+            return true;
+        }
 		// first "execute" the instructions associated with this line and potentially hit instruction breakpoints
 		while (reverse ? this.instruction >= this.starts[ln] : this.instruction < this.ends[ln]) {
 			reverse ? this.instruction-- : this.instruction++;
@@ -571,7 +590,9 @@ export class SPLRuntime extends EventEmitter {
         return false;
     }
     private executeLinePart(ln: number, line: string, charOffset: number): number | boolean {
-        var charOffset = 0;
+        if (line.trimStart().length == 0) {
+            return false;
+        }
 
         if (!this.info.get('init')?.value) {
             if (line.includes(".")) {
@@ -582,22 +603,41 @@ export class SPLRuntime extends EventEmitter {
             }
         }
 
-        if (line.trimStart().toLowerCase().startsWith('act')) {
-            this.info.set('act', new RuntimeVariable('act', 1));
-            var act = line.slice(3, line.indexOf(',')).trimStart();
+        if (line.trimStart().toLowerCase().startsWith('act ')) { //TODO: What happens with no :
+            var act = line.slice(4, line.indexOf(',')).trimStart();
             act = act.slice(0, act.indexOf(':')).trimEnd();
-            this.sendEvent('output', 'log', 'act: ' + act + ' found', this._sourceFile, ln, charOffset + (line.length - line.trimStart().length));
+            var actNum = romanToInt(act);
+            if (Number.isNaN(actNum)) {
+                this.error('Act number not a roman numeral!', ln, charOffset + (line.length - line.trimStart().length) + 4);
+                return true;
+            }
+            this.info.set('act', new RuntimeVariable('act', actNum));
+            this.info.set('scene', new RuntimeVariable('scene', -1));
+            return line.indexOf('.') + 1;
+        }
+
+        if (line.trimStart().toLowerCase().startsWith('scene ')) {
+            var scene = line.slice(6, line.indexOf(',')).trimStart();
+            scene = scene.slice(0, scene.indexOf(':')).trimEnd();
+            var sceneNum = romanToInt(scene);
+            if (Number.isNaN(sceneNum)) {
+                this.error('Scene number not a roman numeral!', ln, charOffset + (line.length - line.trimStart().length) + 6);
+                return true;
+            }
+            this.info.set('scene', new RuntimeVariable('scene', sceneNum));
+            this.sendEvent('output', 'log', 'Act ' + this.info.get('act')?.value + ', Scene ' + this.info.get('scene')?.value, this._sourceFile, ln, charOffset + (line.length - line.trimStart().length));
             return line.indexOf('.') + 1;
         }
 
         if (this.info.get('act')?.value == -1) {
-            if (line.trimStart().length == 0) {
-                return 0;
-            }
-            //TODO: find out whether you can have multiple commas in the description of the characters
             var character = line.slice(0, line.indexOf(',')).trimStart();
             this.sendEvent('output', 'log', 'character ' + character + ' found', this._sourceFile, ln, charOffset + (line.length - line.trimStart().length));
             return line.indexOf('.') + 1;
+        }
+
+        if (this.info.get('scene')?.value == -1) {
+            this.error("Scene expected", ln, 0);
+            return true;
         }
 
 		// find variable accesses
@@ -687,6 +727,12 @@ export class SPLRuntime extends EventEmitter {
 		// nothing interesting found -> continue
 		return false;
 	}
+
+    private error(message: string, ln: number, charnum: number) {
+        this.sendEvent('output', 'err', message, this._sourceFile, ln,charnum);
+        this.sendEvent('stopOnException', message);
+        this.errored = new RuntimeVariable('errored', true);
+    }
 
 	private async verifyBreakpoints(path: string): Promise<void> {
 
