@@ -555,16 +555,28 @@ export class SPLRuntime extends EventEmitter {
 		}
 
 		var line = this.getLine(ln);
+        var offset = 0;
+        var res;
+        while (line.trimStart().length != 0) {
+            res = this.executeLinePart(ln, line, offset);
+            if (typeof res == 'boolean') {
+                return res;
+            }
+            offset += res;
+            line = line.slice(offset);
+            if (line.trimStart().length != 0) {
+                this.sendEvent('output', 'warning', 'Multiple statements on one line', this._sourceFile, ln, offset + (line.length - line.trimStart().length));
+            }
+        }
+        return false;
+    }
+    private executeLinePart(ln: number, line: string, charOffset: number): number | boolean {
         var charOffset = 0;
 
         if (!this.info.get('init')?.value) {
             if (line.includes(".")) {
                 this.info.set('init', new RuntimeVariable('init', true));
-                charOffset = line.indexOf('.') + 1;
-                line = line.slice(charOffset);
-                if (line.trimStart().length != 0) {
-                    this.sendEvent('output', 'warning', 'Multiple statements on one line', this._sourceFile, ln, charOffset + (line.length - line.trimStart().length));
-                }
+                return line.indexOf('.') + 1;
             } else {
                 return false;
             }
@@ -572,11 +584,12 @@ export class SPLRuntime extends EventEmitter {
 
         if (line.trimStart().toLowerCase().startsWith('act')) {
             this.info.set('act', new RuntimeVariable('act', 1));
+            return line.indexOf('.') + 1;
         }
 
         if (this.info.get('act')?.value == -1) {
             if (line.trimStart().length == 0) {
-                return false;
+                return 0;
             }
             //TODO: find out whether you can have multiple commas in the description of the characters
             var character = line.slice(0, line.indexOf(','));
