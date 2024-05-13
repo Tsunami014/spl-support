@@ -584,6 +584,9 @@ export class SPLRuntime extends EventEmitter {
 
         if (line.trimStart().toLowerCase().startsWith('act')) {
             this.info.set('act', new RuntimeVariable('act', 1));
+            var act = line.slice(3, line.indexOf(',')).trimStart();
+            act = act.slice(0, act.indexOf(':')).trimEnd();
+            this.sendEvent('output', 'log', 'act: ' + act + ' found', this._sourceFile, ln, charOffset + (line.length - line.trimStart().length));
             return line.indexOf('.') + 1;
         }
 
@@ -592,8 +595,9 @@ export class SPLRuntime extends EventEmitter {
                 return 0;
             }
             //TODO: find out whether you can have multiple commas in the description of the characters
-            var character = line.slice(0, line.indexOf(','));
+            var character = line.slice(0, line.indexOf(',')).trimStart();
             this.sendEvent('output', 'log', 'character ' + character + ' found', this._sourceFile, ln, charOffset + (line.length - line.trimStart().length));
+            return line.indexOf('.') + 1;
         }
 
 		// find variable accesses
