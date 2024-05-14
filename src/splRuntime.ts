@@ -624,7 +624,6 @@ export class SPLRuntime extends EventEmitter {
             }
         }
 
-        // TODO: Enforce logical progression of acts and scenes
         if (line.trimStart().toLowerCase().startsWith('act ')) {
             var act = tl.slice(4, tl.indexOf(','));
             var spacingdiff = (act.length - act.trimStart().length) + 4;
@@ -697,9 +696,14 @@ export class SPLRuntime extends EventEmitter {
             let reg0 = new RegExp(`scene +?${scene} *?:`, "gi");
             var matches;
             var i = 0;
-            while (matches = reg0.exec(this.sourceAll)) {
-                // matches[1] will be each successive block of text between the pre tags
-                console.log(matches[0]);
+            var lineCharNums = this.sourceLines.slice(0, ln).map(function(str) {return str.length});
+            var lineCharNum = lineCharNums.reduce((sum, current) => sum + current, 0);
+            var from = this.sourceAll.toLowerCase().slice(0, lineCharNum).lastIndexOf('act');
+            var to = this.sourceAll.toLowerCase().slice(lineCharNum + 3).indexOf('act') + lineCharNum + 3;
+            if (to == -1) {
+                to = this.sourceAll.length
+            }
+            while (matches = reg0.exec(this.sourceAll.slice(from, to))) {
                 i += 1;
             }
             if (i == 0) {
