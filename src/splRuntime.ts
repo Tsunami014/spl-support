@@ -102,6 +102,19 @@ function romanToInt(s: string): number {
     return result;
 }
 
+function findNext(l: string) {
+    var out = -1;
+    const attempt = (char: string) => {
+        var pos = l.indexOf(char);
+        if (pos != -1 && (out > pos || out == -1)) {
+            out = pos;
+        }
+    }
+    attempt('.');
+    attempt('!');
+    return out + 1;
+}
+
 /**
  * A SPL runtime with minimal debugger functionality.
  * SPLRuntime is a hypothetical (aka "SPL") "execution engine with debugging support":
@@ -605,7 +618,7 @@ export class SPLRuntime extends EventEmitter {
         if (!this.info.get('init')?.value) {
             if (line.includes(".")) {
                 this.info.set('init', new RuntimeVariable('init', true));
-                return line.indexOf('.') + 1;
+                return findNext(line);
             } else {
                 return false;
             }
@@ -655,7 +668,7 @@ export class SPLRuntime extends EventEmitter {
             if (this.sourceAll.toLowerCase())
             this.info.set('act', new RuntimeVariable('act', actNum));
             this.info.set('scene', new RuntimeVariable('scene', 0));
-            return line.indexOf('.') + 1;
+            return findNext(line);
         }
 
         if (line.trimStart().toLowerCase().startsWith('scene ')) {
@@ -699,7 +712,7 @@ export class SPLRuntime extends EventEmitter {
             }
             this.info.set('scene', new RuntimeVariable('scene', sceneNum));
             this.sendEvent('output', 'log', 'Act ' + this.info.get('act')?.value + ', Scene ' + this.info.get('scene')?.value, this._sourceFile, ln,  tldiff);
-            return line.indexOf('.') + 1;
+            return findNext(line);
         }
 
         if (this.info.get('act')?.value == 0) {
@@ -713,7 +726,7 @@ export class SPLRuntime extends EventEmitter {
             }
             this.variables.set(character, new RuntimeVariable(character + ' info', [new RuntimeVariable('init', 'null')]))
             // this.sendEvent('output', 'log', 'character ' + character + ' found', this._sourceFile, ln,  tldiff);
-            return line.indexOf('.') + 1;
+            return findNext(line);
         }
 
         if (this.info.get('scene')?.value == 0) {
