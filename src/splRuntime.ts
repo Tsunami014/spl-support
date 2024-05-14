@@ -129,6 +129,7 @@ export class SPLRuntime extends EventEmitter {
 
 	// the contents (= lines) of the one and only file
 	private sourceLines: string[] = [];
+    private sourceAll: string = '';
 	private instructions: Word[] = [];
 	private starts: number[] = [];
 	private ends: number[] = [];
@@ -152,6 +153,10 @@ export class SPLRuntime extends EventEmitter {
 
     // This is the info about what's going on with the program, for the stack trace.
     private info = new Map<string, RuntimeVariable>();
+
+    // These are all the acts and scenes initialised
+    private acts = new Map<number, RuntimeVariable>();
+    private scenes = new Map<number, RuntimeVariable>();
 
 	// maps from sourceFile to array of IRuntimeBreakpoint
 	private breakPoints = new Map<string, IRuntimeBreakpoint[]>();
@@ -181,9 +186,8 @@ export class SPLRuntime extends EventEmitter {
 		await this.loadSource(this.normalizePathAndCasing(program));
 
         this.info.set('init', new RuntimeVariable('init', false))
-        this.info.set('act', new RuntimeVariable('act', -1))
-        this.info.set('scene', new RuntimeVariable('act', -1))
-        this.errored = new RuntimeVariable('errored', false);
+        this.info.set('act', new RuntimeVariable('act', 0))
+        this.info.set('scene', new RuntimeVariable('act', 0))
 
 		if (debug) {
 			await this.verifyBreakpoints(this._sourceFile);
@@ -311,7 +315,7 @@ export class SPLRuntime extends EventEmitter {
 	 * Returns a fake 'stacktrace' where every 'stackframe' is a word from the current line.
 	 */
 	public stack(startFrame: number, endFrame: number): IRuntimeStack {
-
+        // parsing stack: character, line, event, scene, act, play
 		const line = this.getLine();
 		const words = this.getWords(this.currentLine, line);
 		words.push({ name: 'BOTTOM', line: -1, index: -1 });	// add a sentinel so that the stack is never empty...
@@ -496,7 +500,8 @@ export class SPLRuntime extends EventEmitter {
 	}
 
 	private initializeContents(memory: Uint8Array) {
-		this.sourceLines = new TextDecoder().decode(memory).split(/\r?\n/);
+        this.sourceAll = new TextDecoder().decode(memory)
+		this.sourceLines = this.sourceAll.split(/\r?\n/);
 
 		this.instructions = [];
 
@@ -593,7 +598,7 @@ export class SPLRuntime extends EventEmitter {
         const tl = line.trim()
         const tldiff = charOffset + (line.length - line.trimStart().length)
 
-        if (line.trimStart().length == 0) {
+        if (tl.length == 0) {
             return false;
         }
 
@@ -606,8 +611,11 @@ export class SPLRuntime extends EventEmitter {
             }
         }
 
+        // TODO: Enforce logical progression of acts and scenes
         if (line.trimStart().toLowerCase().startsWith('act ')) {
-            var act = tl.slice(4, tl.indexOf(',')).trimStart();
+            var act = tl.slice(4, tl.indexOf(','));
+            var spacingdiff = (act.length - act.trimStart().length) + 4;
+            act = act.trimStart()
             if (act.indexOf(':') == -1) {
                 this.error("Expecting ':'", ln,  tldiff);
                 return true;
@@ -615,16 +623,44 @@ export class SPLRuntime extends EventEmitter {
             act = act.slice(0, act.indexOf(':')).trimEnd();
             var actNum = romanToInt(act);
             if (Number.isNaN(actNum)) {
-                this.error('Act number not a roman numeral!', ln,  tldiff + 4);
+                this.error('Act number not a roman numeral!', ln,  tldiff + spacingdiff);
                 return true;
             }
+            var currentAct = this.info.get('act')?.value;
+            if (typeof currentAct != 'number') {
+                this.error('Unknown error: act is not a number?!?!?', ln,  tldiff + spacingdiff); // This should never occur, is just to appease the linter
+                return true;
+            }
+            if (actNum != currentAct + 1) {
+                this.sendEvent('output', 'warning', 
+                               `Act ${act} does not follow logical progression! It's value is ${actNum.toString()} wheras the next act number expected is ${currentAct + 1}!`, 
+                               this._sourceFile, ln, tldiff + spacingdiff);
+            }
+            let reg0 = new RegExp(`act +?${act} *?:`, "gi");
+            var matches;
+            var i = 0;
+            while (matches = reg0.exec(this.sourceAll)) {
+                // matches[1] will be each successive block of text between the pre tags
+                console.log(matches[0]);
+                i += 1;
+            }
+            if (i == 0) {
+                this.error('Unknown error: no acts found?!?!?', ln,  tldiff + spacingdiff);
+                return true;
+            }
+            if (i > 1) {
+                this.error('Act numeral ' + act + ' is not unique! Used ' + i.toString() + ' times.', ln,  tldiff + spacingdiff);
+                return true;
+            }
+            if (this.sourceAll.toLowerCase())
             this.info.set('act', new RuntimeVariable('act', actNum));
-            this.info.set('scene', new RuntimeVariable('scene', -1));
+            this.info.set('scene', new RuntimeVariable('scene', 0));
             return line.indexOf('.') + 1;
         }
 
         if (line.trimStart().toLowerCase().startsWith('scene ')) {
             var scene = tl.slice(6, tl.indexOf(',')).trimStart();
+            var spacingdiff = (scene.length - scene.trimStart().length) + 6;
             if (scene.indexOf(':') == -1) {
                 this.error("Expecting ':'", ln,  tldiff);
                 return true;
@@ -632,7 +668,33 @@ export class SPLRuntime extends EventEmitter {
             scene = scene.slice(0, scene.indexOf(':')).trimEnd();
             var sceneNum = romanToInt(scene);
             if (Number.isNaN(sceneNum)) {
-                this.error('Scene number not a roman numeral!', ln,  tldiff + 6);
+                this.error('Scene number not a roman numeral!', ln,  tldiff + spacingdiff);
+                return true;
+            }
+            var currentScene = this.info.get('scene')?.value;
+            if (typeof currentScene != 'number') {
+                this.error('Unknown error: scene is not a number?!?!?', ln,  tldiff + spacingdiff); // This should never occur, is just to appease the linter
+                return true;
+            }
+            if (sceneNum != currentScene + 1) {
+                this.sendEvent('output', 'warning', 
+                               `Scene ${scene} does not follow logical progression! It's value is ${sceneNum.toString()} wheras the next scene number expected is ${currentScene + 1}!`, 
+                               this._sourceFile, ln, tldiff + spacingdiff);
+            }
+            let reg0 = new RegExp(`scene +?${scene} *?:`, "gi");
+            var matches;
+            var i = 0;
+            while (matches = reg0.exec(this.sourceAll)) {
+                // matches[1] will be each successive block of text between the pre tags
+                console.log(matches[0]);
+                i += 1;
+            }
+            if (i == 0) {
+                this.error('Unknown error: no scenes found?!?!?', ln,  tldiff + spacingdiff);
+                return true;
+            }
+            if (i > 1) {
+                this.error('Scene numeral ' + scene + ' is not unique! Used ' + i.toString() + ' times.', ln,  tldiff + spacingdiff);
                 return true;
             }
             this.info.set('scene', new RuntimeVariable('scene', sceneNum));
@@ -640,7 +702,7 @@ export class SPLRuntime extends EventEmitter {
             return line.indexOf('.') + 1;
         }
 
-        if (this.info.get('act')?.value == -1) {
+        if (this.info.get('act')?.value == 0) {
             if (tl.indexOf(',') == -1) {
                 this.error("Expecting ','", ln, tldiff);
                 return true;
@@ -654,7 +716,7 @@ export class SPLRuntime extends EventEmitter {
             return line.indexOf('.') + 1;
         }
 
-        if (this.info.get('scene')?.value == -1) {
+        if (this.info.get('scene')?.value == 0) {
             this.error("Scene expected", ln, 0);
             return true;
         }
