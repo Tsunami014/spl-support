@@ -738,6 +738,18 @@ export class SPLRuntime extends EventEmitter {
             return true;
         }
 
+        if (tl.startsWith('[')) {
+            if (!tl.includes(']')) {
+                this.error("Expected ']'", ln, tldiff);
+                return true;
+            }
+            var kword = tl.slice(1, tl.indexOf(' ')).toLowerCase().trim();
+            if (!['enter', 'exit', 'exeunt'].includes(kword)) {
+                this.error("Expected one of: 'Enter' 'Exit' 'Exeunt'", ln, tldiff + 1);
+                return true;
+            }
+        }
+
 		// find variable accesses
 		let reg0 = /\$([a-z][a-z0-9]*)(=(false|true|[0-9]+(\.[0-9]+)?|\".*\"|\{.*\}))?/ig;
 		let matches0: RegExpExecArray | null;
