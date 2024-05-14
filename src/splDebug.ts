@@ -558,11 +558,7 @@ export class SPLDebugSession extends LoggingDebugSession {
 				// fall through
 
 			default:
-				if (args.expression.startsWith('$')) {
-					rv = this._runtime.getLocalVariable(args.expression.substr(1));
-				} else {
-					rv = new RuntimeVariable('eval', this.convertToRuntime(args.expression));
-				}
+				rv = new RuntimeVariable('eval', this._runtime.debugCommand(args.expression));
 				break;
 		}
 

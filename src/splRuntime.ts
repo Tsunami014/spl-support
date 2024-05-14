@@ -231,7 +231,6 @@ export class SPLRuntime extends EventEmitter {
 	 * Step to the next/previous non empty line.
 	 */
 	public step(instruction: boolean, reverse: boolean) {
-
 		if (instruction) {
 			if (reverse) {
 				this.instruction--;
@@ -607,6 +606,23 @@ export class SPLRuntime extends EventEmitter {
         }
         return false;
     }
+    public debugCommand(command: string): boolean { // TODO: Improve
+		var line = command;
+        var offset = 0;
+        var res;
+        while (line.trimStart().length != 0) {
+            res = this.executeLinePart(0, line, offset);
+            if (typeof res == 'boolean') {
+                return res;
+            }
+            offset += res;
+            line = line.slice(offset);
+            if (line.trimStart().length != 0) {
+                this.sendEvent('output', 'warning', 'Multiple statements on one line', this._sourceFile, 0, offset + (line.length - line.trimStart().length));
+            }
+        }
+        return false;
+    }
     private executeLinePart(ln: number, line: string, charOffset: number): number | boolean {
         const tl = line.trim()
         const tldiff = charOffset + (line.length - line.trimStart().length)
@@ -726,7 +742,8 @@ export class SPLRuntime extends EventEmitter {
             }
             var character = tl.slice(0, tl.indexOf(','));
             if (!ShakespearianDat.Characters.includes(character)) {
-                this.error('Character name not valid!', ln, tldiff)
+                this.error('Character name not in list of names!', ln, tldiff);
+                return true;
             }
             this.variables.set(character, new RuntimeVariable(character + ' info', [new RuntimeVariable('init', 'null')]))
             // this.sendEvent('output', 'log', 'character ' + character + ' found', this._sourceFile, ln,  tldiff);
