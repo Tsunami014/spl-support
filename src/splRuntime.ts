@@ -167,10 +167,6 @@ export class SPLRuntime extends EventEmitter {
     // This is the info about what's going on with the program, for the stack trace.
     private info = new Map<string, RuntimeVariable>();
 
-    // These are all the acts and scenes initialised
-    private acts = new Map<number, RuntimeVariable>();
-    private scenes = new Map<number, RuntimeVariable>();
-
 	// maps from sourceFile to array of IRuntimeBreakpoint
 	private breakPoints = new Map<string, IRuntimeBreakpoint[]>();
 
@@ -328,12 +324,14 @@ export class SPLRuntime extends EventEmitter {
 	 */
 	public stack(startFrame: number, endFrame: number): IRuntimeStack {
         // parsing stack: character, line, event, scene, act, play
-		const line = this.getLine();
-		const words = this.getWords(this.currentLine, line);
-		words.push({ name: 'BOTTOM', line: -1, index: -1 });	// add a sentinel so that the stack is never empty...
+        var words = []
+        if (this.info.get('act')?.value != 0) { //TODO: Find act line num
+            words.push({ name: 'Act ' + this.info.get('act')?.value.toString(), line: 0, index: -2 })
+        }
+		words.push({ name: 'Play', line: -1, index: -1 });	// add a sentinel so that the stack is never empty...
 
 		// if the line contains the word 'disassembly' we support to "disassemble" the line by adding an 'instruction' property to the stackframe
-		const instruction = line.indexOf('disassembly') >= 0 ? this.instruction : undefined;
+		const instruction = this.instruction;
 
 		const column = typeof this.currentColumn === 'number' ? this.currentColumn : undefined;
 
@@ -572,6 +570,29 @@ export class SPLRuntime extends EventEmitter {
 		return false;
 	}
 
+    /**
+	 * Finds lines in the current file around the current one
+     * 
+	 * Example usage: Find all the text inside the current act;
+     * pass in the current line and the word 'act' and it will return it!
+     * 
+     * Returns: The text within the bounds of the 2 closest references to that word
+     * When that word is at the start of a line.
+	 */
+    private findLinesAround(ln: number, find: string, fromChar: number = 0) {
+        // TODO: Change from lastindexof to regex; to make sure that the text found is at the
+        //       start of the line, so a character could say the word 'act' and not muck everything up
+        // TODO: Fix this - it has an issue? Why?
+        var lineCharNums = this.sourceLines.slice(0, ln).map(function(str) {return str.length});
+        var lineCharNum = lineCharNums.reduce((sum, current) => sum + current, 0) + fromChar;
+        var from = this.sourceAll.toLowerCase().slice(0, lineCharNum).lastIndexOf(find);
+        var to = this.sourceAll.toLowerCase().slice(lineCharNum + 3).indexOf(find) + lineCharNum + 3;
+        if (to == -1) {
+            to = this.sourceAll.length;
+        }
+        return this.sourceAll.slice(from, to);
+    }
+
 	/**
 	 * "execute a line" of the readme spl.
 	 * Returns true if execution sent out a stopped event and needs to stop.
@@ -607,6 +628,8 @@ export class SPLRuntime extends EventEmitter {
         return false;
     }
     public debugCommand(command: string): boolean { // TODO: Improve
+        // Idea: Replace the current file and all references to it with command
+        //       And then put it back once it finishes
 		var line = command;
         var offset = 0;
         var res;
@@ -712,14 +735,7 @@ export class SPLRuntime extends EventEmitter {
             let reg0 = new RegExp(`scene +?${scene} *?:`, "gi");
             var matches;
             var i = 0;
-            var lineCharNums = this.sourceLines.slice(0, ln).map(function(str) {return str.length});
-            var lineCharNum = lineCharNums.reduce((sum, current) => sum + current, 0);
-            var from = this.sourceAll.toLowerCase().slice(0, lineCharNum).lastIndexOf('act');
-            var to = this.sourceAll.toLowerCase().slice(lineCharNum + 3).indexOf('act') + lineCharNum + 3;
-            if (to == -1) {
-                to = this.sourceAll.length
-            }
-            while (matches = reg0.exec(this.sourceAll.slice(from, to))) {
+            while (matches = reg0.exec(this.findLinesAround(ln, 'act', charOffset))) {
                 i += 1;
             }
             if (i == 0) {
