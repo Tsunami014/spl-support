@@ -91,7 +91,7 @@ export function activateSPLDebug(context: vscode.ExtensionContext, factory?: vsc
 	}
 	context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('spl', factory));
     if ('dispose' in factory) {
-		context.subscriptions.push(factory);
+		context.subscriptions.push(factory as { dispose(): any; });
 	}
 
 	// override VS Code's default implementation of the debug hover
